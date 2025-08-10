@@ -1,0 +1,23 @@
+# --- secrets / env ---
+.env
+.env.*
+!.env.example
+
+# --- go build artifacts ---
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# --- build / cache / bins ---
+/bin/
+/dist/
+/tmp/
+/vendor/
+
+# --- editor / os ---
+.vscode/
+.DS_Store
