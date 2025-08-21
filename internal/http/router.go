@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/websocket/v2"
 
 	"backend_iropico/internal/http/handlers"
 	"backend_iropico/internal/ws"
@@ -16,14 +17,17 @@ func NewRouter(hubManager *ws.Manager) *fiber.App {
 		ServerHeader: "fiber",
 	})
 
-	// ミドルウェア
+	// ★ WSマネージャをハンドラへ注入
+	handlers.SetWSManager(hubManager)
+
+	// Middlewares
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", // MVPは緩め。必要に応じてフロントのオリジンに絞る
+		AllowOrigins: "*", // MVPは緩め。必要に応じてフロントのオリジンに限定
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
-	// ヘルス
+	// Healthcheck
 	app.Get("/ping", func(c *fiber.Ctx) error { return c.SendString("pong") })
 
 	// Users
@@ -43,8 +47,14 @@ func NewRouter(hubManager *ws.Manager) *fiber.App {
 	app.Get("/rooms/:code/ranking", handlers.GetRanking) // ?round=n でラウンド別、無ければ合計
 	app.Get("/users/:id/history", handlers.GetUserHistory)
 
-	// WebSocket
-	app.Get("/ws/rooms/:code", ws.ServeWS(hubManager)) // ?user_id=&uuid=
+	// WebSocket (upgrade 判定を /ws 配下にだけ適用)
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			return c.Next()
+		}
+		return c.SendStatus(fiber.StatusUpgradeRequired)
+	})
+	app.Get("/ws/rooms/:code", websocket.New(ws.ServeWS(hubManager))) // ?user_id=&uuid=
 
 	return app
 }

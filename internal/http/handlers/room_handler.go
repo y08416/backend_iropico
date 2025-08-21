@@ -68,6 +68,14 @@ func JoinRoom(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
 	}
 
+	// WS通知（参加者が増えた）
+	if wsMgr != nil {
+		hub := wsMgr.GetHub(code)
+		hub.Emit("player_joined", fiber.Map{
+			"userId": req.UserID,
+		})
+	}
+
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
@@ -93,8 +101,19 @@ func StartRoom(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
 	}
 
-	// 出題色（デバッグ用に返す。将来はWSで配信）
+	// 出題色
 	h, s, v := randomHSV()
+
+	// WSで部屋全員に配信
+	if wsMgr != nil {
+		hub := wsMgr.GetHub(code)
+		hub.Emit("game_started", fiber.Map{
+			"round": 1,
+			"color": fiber.Map{"h": h, "s": s, "v": v},
+		})
+	}
+
+	// デバッグ用HTTPレス
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"ok":    true,
 		"round": 1,
@@ -122,6 +141,16 @@ func NextRound(c *fiber.Ctx) error {
 	}
 
 	h, s, v := randomHSV()
+
+	// WS通知：次ラウンド
+	if wsMgr != nil {
+		hub := wsMgr.GetHub(code)
+		hub.Emit("next_round", fiber.Map{
+			"round": newRound,
+			"color": fiber.Map{"h": h, "s": s, "v": v},
+		})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"ok":    true,
 		"round": newRound,
@@ -141,6 +170,12 @@ func EndRoom(c *fiber.Ctx) error {
 	}
 	if err := repositories.SetRoomEnded(ctx, room.ID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
+	}
+
+	// WS通知：ゲーム終了
+	if wsMgr != nil {
+		hub := wsMgr.GetHub(code)
+		hub.Emit("game_ended", nil)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

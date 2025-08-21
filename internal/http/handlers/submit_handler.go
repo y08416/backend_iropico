@@ -11,6 +11,7 @@ import (
 	"backend_iropico/internal/repositories"
 )
 
+// -------- Submit Handler --------
 func Submit(c *fiber.Ctx) error {
 	code := c.Params("code")
 
@@ -23,7 +24,10 @@ func Submit(c *fiber.Ctx) error {
 	vF, _ := strconv.ParseFloat(c.FormValue("v"), 32)
 
 	if userID == 0 || roundNo == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "user_id and round_no required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"ok":  false,
+			"msg": "user_id and round_no required",
+		})
 	}
 
 	// 画像（任意）
@@ -47,7 +51,10 @@ func Submit(c *fiber.Ctx) error {
 	// ルーム取得
 	room, err := repositories.GetRoomByCode(ctx, code)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "room not found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"ok":  false,
+			"msg": "room not found",
+		})
 	}
 
 	// 保存（upsert）
@@ -60,18 +67,33 @@ func Submit(c *fiber.Ctx) error {
 		nil, // resultJSON (任意)
 	)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":  false,
+			"msg": err.Error(),
+		})
 	}
 
 	// そのユーザーを「クリア」扱いに
-	if err := repositories.MarkCleared(ctx, room.ID, userID); err != nil {
-		// 参加してない等で失敗しても致命的ではないので警告にとどめる運用でもOK
-	}
+	_ = repositories.MarkCleared(ctx, room.ID, userID)
 
 	// ラウンドの最新ランキングを返す
 	rank, err := repositories.GetRoundRanking(ctx, room.ID, roundNo)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"ok":  false,
+			"msg": err.Error(),
+		})
+	}
+
+	// --- WS通知（他プレイヤーにスコア更新を知らせる） ---
+	if wsMgr != nil {
+		hub := wsMgr.GetHub(code)
+		hub.Emit("submission", fiber.Map{
+			"userId":  userID,
+			"round":   roundNo,
+			"score":   scoreF,
+			"ranking": rank,
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
