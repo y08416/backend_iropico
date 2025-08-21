@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -30,7 +31,7 @@ func CreateRoom(c *fiber.Ctx) error {
 		code := genCode(6)
 		r, err := repositories.CreateRoom(ctx, req.HostUserID, code)
 		if err == nil {
-			// ※必要ならここでホストも自動参加させる
+			// 必要ならホスト自動参加:
 			// _ = repositories.JoinRoom(ctx, r.ID, req.HostUserID)
 
 			return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -93,8 +94,18 @@ func StartRoom(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
 	}
 
-	// 出題色（デバッグ用に返す。将来はWSで配信）
+	// 出題色（WSでも返す）
 	h, s, v := randomHSV()
+
+	// ★ WS通知：ゲーム開始
+	if wsMgr != nil {
+		log.Printf("[HTTP] StartRoom code=%s -> emit game_started", code)
+		wsMgr.GetHub(code).Emit("game_started", fiber.Map{
+			"round": 1,
+			"color": fiber.Map{"h": h, "s": s, "v": v},
+		})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"ok":    true,
 		"round": 1,
@@ -122,6 +133,16 @@ func NextRound(c *fiber.Ctx) error {
 	}
 
 	h, s, v := randomHSV()
+
+	// ★ WS通知：次ラウンド
+	if wsMgr != nil {
+		log.Printf("[HTTP] NextRound code=%s round=%d -> emit next_round", code, newRound)
+		wsMgr.GetHub(code).Emit("next_round", fiber.Map{
+			"round": newRound,
+			"color": fiber.Map{"h": h, "s": s, "v": v},
+		})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"ok":    true,
 		"round": newRound,
@@ -141,6 +162,12 @@ func EndRoom(c *fiber.Ctx) error {
 	}
 	if err := repositories.SetRoomEnded(ctx, room.ID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
+	}
+
+	// ★ WS通知：ゲーム終了
+	if wsMgr != nil {
+		log.Printf("[HTTP] EndRoom code=%s -> emit game_ended", code)
+		wsMgr.GetHub(code).Emit("game_ended", fiber.Map{})
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

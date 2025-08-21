@@ -12,23 +12,25 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load() // .env があれば読み込む
+	// .env 読み込み（存在すれば）
+	_ = godotenv.Load()
 
+	// Render では PORT 環境変数が与えられる
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
 	}
 
-	// DB接続
+	// DB 接続
 	db.Connect()
 
-	// WSマネージャ
+	// WebSocket Manager
 	manager := ws.NewManager()
 
-	// ルーター
+	// Fiber Router
 	app := httpapi.NewRouter(manager)
 
-	// Listen
+	// サーバ起動
 	log.Printf("🚀 Server running on :%s", port)
 	if err := app.Listen(":" + port); err != nil {
 		log.Fatal(err)
