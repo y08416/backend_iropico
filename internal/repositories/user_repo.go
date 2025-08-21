@@ -28,3 +28,19 @@ func GetUserByID(ctx context.Context, id int64) (models.User, error) {
 		Scan(&u.ID, &u.Name, &u.UUID, &u.CreatedAt)
 	return u, err
 }
+
+func UpdateUser(ctx context.Context, id string, user *models.User) error {
+	q := `
+		UPDATE users
+		SET name = $1, uuid = $2
+		WHERE id = $3;
+	`
+	_, err := db.DB.ExecContext(ctx, q, user.Name, user.UUID, id)
+	return err
+}
+
+func DeleteUser(ctx context.Context, id string) error {
+	q := `DELETE FROM users WHERE id = $1;`
+	_, err := db.DB.ExecContext(ctx, q, id)
+	return err
+}

@@ -51,8 +51,7 @@ CREATE TABLE IF NOT EXISTS history (
   score        REAL    NOT NULL CHECK (score >= 0 AND score <= 1),
   result_json  JSONB,                 -- 任意: 判定詳細(ヒストグラム等)
 
-  -- 画像（MVPはDB保存、将来は外部ストレージに移行可）
-  photo_bytes  BYTEA,
+  -- 画像（解析後は破棄、必要ならサムネイルURLのみ保存）
   photo_mime   TEXT,
   photo_url    TEXT,
 
@@ -63,3 +62,16 @@ CREATE TABLE IF NOT EXISTS history (
 );
 CREATE INDEX IF NOT EXISTS idx_history_room_round ON history(room_id, round_no);
 CREATE INDEX IF NOT EXISTS idx_history_user       ON history(user_id);
+
+-- rooms.code での検索/削除を高速化（UNIQUEにより索引は暗黙作成済みだが明示も可）
+CREATE UNIQUE INDEX IF NOT EXISTS uq_rooms_code ON rooms(code);
+
+-- history: APIで多用する条件の索引を明示（複合ユニークは既にあり）
+CREATE INDEX IF NOT EXISTS idx_history_room_round_user ON history(room_id, round_no, user_id);
+
+-- players: ルーム参加者一覧の高速化（既に idx_players_room あり）
+-- ※存在するため参考：CREATE INDEX IF NOT EXISTS idx_players_room ON players(room_id);
+
+-- 参照整合性: 連鎖削除の最終確認（既に CASCADE 設定済みだが念のため）
+-- rooms.id を消したら players/history も消える
+-- users.id を消したら players/history は消えるが、host_user_id は RESTRICT のため先にルームを処理する運用
