@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"io"
+	"log"
 	"strconv"
 	"time"
 
@@ -65,13 +66,23 @@ func Submit(c *fiber.Ctx) error {
 
 	// そのユーザーを「クリア」扱いに
 	if err := repositories.MarkCleared(ctx, room.ID, userID); err != nil {
-		// 参加してない等で失敗しても致命的ではないので警告にとどめる運用でもOK
+		log.Printf("[WARN] MarkCleared failed: %v", err)
 	}
 
 	// ラウンドの最新ランキングを返す
 	rank, err := repositories.GetRoundRanking(ctx, room.ID, roundNo)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
+	}
+
+	// ★ WS通知：提出/ランキング更新
+	if wsMgr != nil {
+		wsMgr.GetHub(code).Emit("submission", fiber.Map{
+			"round":   roundNo,
+			"userId":  userID,
+			"score":   float32(scoreF),
+			"ranking": rank,
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
