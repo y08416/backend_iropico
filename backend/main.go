@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/jackc/pgx/v5"
+	"github.com/joho/godotenv"
 
 	"backend_iropico/internal/db"
 	"backend_iropico/internal/models"
