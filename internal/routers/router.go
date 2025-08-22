@@ -1,7 +1,8 @@
 package routers
 
 import (
-	"backend_iropico/handlers"
+	"backend_iropico/internal/http/handlers"
+
 	"github.com/labstack/echo/v4"
 )
 

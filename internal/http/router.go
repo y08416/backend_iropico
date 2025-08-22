@@ -1,27 +1,6 @@
 package http
 
 import (
-    "github.com/gofiber/fiber/v2"
-    "backend_iropico/internal/handlers"
-)
-
-func SetupRoutes(app *fiber.App) {
-    app.Get("/users/:id", handlers.GetUser)
-    app.Get("/users", handlers.ListUsers)
-    app.Patch("/users/:id", handlers.PatchUser)
-    app.Delete("/users/:id", handlers.DeleteUser)
-}package handlers
-
-import (
-    "github.com/gofiber/fiber/v2"
-)
-
-func GetUser(c *fiber.Ctx) error {
-    // 実装
-    return c.SendStatus(200)
-}package http
-
-import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"

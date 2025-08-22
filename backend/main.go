@@ -11,8 +11,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/jackc/pgx/v5"
 
-	"backend_iropico/db"
-	"backend_iropico/models"
+	"backend_iropico/internal/db"
+	"backend_iropico/internal/models"
 )
 
 func main() {
