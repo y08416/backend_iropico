@@ -8,14 +8,14 @@ import (
 	"backend_iropico/internal/models"
 )
 
-func CreateRoom(ctx context.Context, hostUserID int64, code string) (models.Room, error) {
+func 	CreateRoom(ctx context.Context, uid string, code string) (models.Room, error) {
 	q := `
 		INSERT INTO rooms (code, host_user_id)
 		VALUES ($1, $2)
 		RETURNING id, code, host_user_id, status, current_round, created_at, started_at, ended_at;
 	`
 	var r models.Room
-	err := db.DB.QueryRowContext(ctx, q, code, hostUserID).
+	err := db.DB.QueryRowContext(ctx, q, code, uid).
 		Scan(&r.ID, &r.Code, &r.HostUserID, &r.Status, &r.CurrentRound, &r.CreatedAt, &r.StartedAt, &r.EndedAt)
 	return r, err
 }

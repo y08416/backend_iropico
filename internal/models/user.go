@@ -3,8 +3,9 @@ package models
 import "time"
 
 type User struct {
-	ID        int64     `db:"id"`
-	Name      string    `db:"name"`
-	UUID      string    `db:"uuid"` // フロント生成のUUID（DB型: uuid）
-	CreatedAt time.Time `db:"created_at"`
+	ID          int64     `json:"id"`
+	UUID        string    `json:"uuid"`
+	Name        string    `json:"name"`
+	DisplayName string    `json:"display_name"`
+	CreatedAt   time.Time `json:"created_at"`
 }

@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"context"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/labstack/echo/v4"
 
 	"backend_iropico/internal/repositories"
 )
@@ -35,4 +38,36 @@ func RegisterUser(c *fiber.Ctx) error {
 		"ok":   true,
 		"user": fiber.Map{"id": u.ID, "name": u.Name, "uuid": u.UUID, "created_at": u.CreatedAt},
 	})
+}
+
+// GET /users/:id
+func GetUser(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id"})
+	}
+	ctx := c.Request().Context()
+	user, err := repositories.GetUserByID(ctx, id)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, nil)
+	}
+	return c.JSON(http.StatusOK, user)
+}
+
+// PATCH /users/:id
+func UpdateUser(c echo.Context) error {
+	// ...実装...
+	return nil
+}
+
+// DELETE /users/:id
+func DeleteUser(c echo.Context) error {
+	// ...実装...
+	return nil
+}
+
+func ListUsers(c echo.Context) error {
+	// ユーザー一覧取得の処理をここに実装
+	return c.JSON(http.StatusOK, []interface{}{})
 }
