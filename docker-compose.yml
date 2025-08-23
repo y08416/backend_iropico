@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: iropico-db
+    environment:
+      POSTGRES_USER: iropico_user
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: iropico
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iropico_user -d iropico"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: migrate/migrate:v4.17.0
+    container_name: iropico-migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations:ro
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://iropico_user:password123@db:5432/iropico?sslmode=disable",
+      "up"
+    ]
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: iropico-backend
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      - RUNNING_IN_DOCKER=1
+      - DATABASE_URL=postgres://iropico_user:password123@db:5432/iropico?sslmode=disable
+      - PORT=3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  db_data:

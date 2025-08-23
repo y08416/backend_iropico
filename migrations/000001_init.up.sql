@@ -1,42 +1,42 @@
--- ルーム状態のENUM（重複作成は無視）
+-- ルーム状態のENUM（存在したらスキップ）
 DO $$ BEGIN
   CREATE TYPE room_status AS ENUM ('waiting','started','ended');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- users：フロント生成のUUIDで識別
+-- users
 CREATE TABLE IF NOT EXISTS users (
   id         BIGSERIAL PRIMARY KEY,
   name       TEXT NOT NULL,
   uuid       TEXT NOT NULL UNIQUE,
-  sdfield    TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- rooms：参加コードで入室、進行状態を保持
+-- rooms
 CREATE TABLE IF NOT EXISTS rooms (
   id             BIGSERIAL PRIMARY KEY,
-  code           TEXT    NOT NULL UNIQUE,                 -- 例: 6～8桁英数
-  host_user_id   BIGINT  NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  status         room_status NOT NULL DEFAULT 'waiting',  -- waiting|started|ended
+  code           TEXT NOT NULL UNIQUE,
+  host_user_id   BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  status         room_status NOT NULL DEFAULT 'waiting',
   current_round  INTEGER NOT NULL DEFAULT 0,
   created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
   started_at     TIMESTAMP,
   ended_at       TIMESTAMP
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_rooms_code ON rooms(code);
 
--- players：誰がどのルームに参加してるか。ラウンド中クリア状態のみ持つ
+-- players
 CREATE TABLE IF NOT EXISTS players (
   id           BIGSERIAL PRIMARY KEY,
   room_id      BIGINT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  has_cleared  BOOLEAN NOT NULL DEFAULT FALSE,            -- ラウンドごとにリセット運用
+  has_cleared  BOOLEAN NOT NULL DEFAULT FALSE,
   joined_at    TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (room_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_players_room ON players(room_id);
 
--- history：1ラウンド・1人の提出結果（スコア＆写真）
+-- history（提出）
 CREATE TABLE IF NOT EXISTS history (
   id           BIGSERIAL PRIMARY KEY,
   room_id      BIGINT  NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -50,22 +50,15 @@ CREATE TABLE IF NOT EXISTS history (
 
   -- 結果
   score        REAL    NOT NULL CHECK (score >= 0 AND score <= 1),
-  result_json  JSONB,                 -- 任意: 判定詳細(ヒストグラム等)
+  result_json  JSONB,
 
-  -- 画像（解析後は破棄、必要ならサムネイルURLのみ保存）
+  -- 画像は保存しない運用だが、跡を残すなら以下を利用可
   photo_mime   TEXT,
   photo_url    TEXT,
 
   created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
-
-  -- 1人1ラウンド1件（差し替えたいならON CONFLICTでUPDATE）
   UNIQUE (room_id, round_no, user_id)
 );
-CREATE INDEX IF NOT EXISTS idx_history_room_round ON history(room_id, round_no);
-CREATE INDEX IF NOT EXISTS idx_history_user       ON history(user_id);
-
--- rooms.code での検索/削除を高速化
-CREATE UNIQUE INDEX IF NOT EXISTS uq_rooms_code ON rooms(code);
-
--- history: APIで多用する条件の索引を明示
-CREATE INDEX IF NOT EXISTS idx_history_room_round_user ON history(room_id, round_no, user_id);
+CREATE INDEX IF NOT EXISTS idx_history_room_round       ON history(room_id, round_no);
+CREATE INDEX IF NOT EXISTS idx_history_user             ON history(user_id);
+CREATE INDEX IF NOT EXISTS idx_history_room_round_user  ON history(room_id, round_no, user_id);

@@ -14,13 +14,13 @@ import (
 
 // -------- ルーム作成 --------
 type createRoomReq struct {
-	HostUserID int64 `json:"host_user_id"`
+	Uuid string `json:"uuid"`
 }
 
 func CreateRoom(c *fiber.Ctx) error {
 	var req createRoomReq
-	if err := c.BodyParser(&req); err != nil || req.HostUserID == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "host_user_id required"})
+	if err := c.BodyParser(&req); err != nil || req.Uuid == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "uuid requiredd" + err.Error()})
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
@@ -29,7 +29,7 @@ func CreateRoom(c *fiber.Ctx) error {
 	// 一意コードを複数回トライ（最大10回）
 	for i := 0; i < 10; i++ {
 		code := genCode(6)
-		r, err := repositories.CreateRoom(ctx, req.HostUserID, code)
+		r, err := repositories.CreateRoom(ctx, req.Uuid, code)
 		if err == nil {
 			// 必要ならホスト自動参加:
 			// _ = repositories.JoinRoom(ctx, r.ID, req.HostUserID)
@@ -46,14 +46,19 @@ func CreateRoom(c *fiber.Ctx) error {
 
 // -------- ルーム参加 --------
 type joinReq struct {
-	UserID int64 `json:"user_id"`
+	UserID string `json:"user_id"`
 }
 
 func JoinRoom(c *fiber.Ctx) error {
 	code := c.Params("code")
 	var req joinReq
-	if err := c.BodyParser(&req); err != nil || req.UserID == 0 {
+	if err := c.BodyParser(&req); err != nil || req.UserID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "user_id required"})
+	}
+
+	userID, err := repositories.GetUserIDByUUID(c.Context(), req.UserID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "user not found"})
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
@@ -64,8 +69,7 @@ func JoinRoom(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "room not found"})
 	}
 
-	if err := repositories.JoinRoom(ctx, room.ID, req.UserID); err != nil {
-		// UNIQUE制約で既参加なら実害ないので 204 でも良いが、ここではエラー返却
+	if err := repositories.JoinRoom(ctx, room.ID, userID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
 	}
 
