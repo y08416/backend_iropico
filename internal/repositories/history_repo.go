@@ -8,15 +8,15 @@ import (
 )
 
 type RankingRow struct {
-	UserID int64   `json:"userId"`
-	Name   string  `json:"name"`
-	Score  float32 `json:"score"`
+	Uuid  string  `json:"uuid"`
+	Name  string  `json:"name"`
+	Score float32 `json:"score"`
 }
 
 // 1人1ラウンド1件の提出を upsert（写真はnil可）
 func UpsertSubmission(
 	ctx context.Context,
-	roomID int64, round int, userID int64,
+	roomID int64, round int, uuid string,
 	h int, s, v float32,
 	score float32,
 	photoMime, photoURL *string,
@@ -24,9 +24,9 @@ func UpsertSubmission(
 ) error {
 	q := `
 				INSERT INTO history
-					(room_id, round_no, user_id, target_h, target_s, target_v, score, result_json, photo_mime, photo_url)
+					(room_id, round_no, uuid, target_h, target_s, target_v, score, result_json, photo_mime, photo_url)
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-				ON CONFLICT (room_id, round_no, user_id)
+				ON CONFLICT (room_id, round_no, uuid)
 				DO UPDATE SET
 					target_h=EXCLUDED.target_h,
 					target_s=EXCLUDED.target_s,
@@ -44,7 +44,7 @@ func UpsertSubmission(
 		resultJSONArg = resultJSON
 	}
 	_, err := db.DB.ExecContext(ctx, q,
-		roomID, round, userID,
+		roomID, round, uuid,
 		h, s, v,
 		score,
 		resultJSONArg,
@@ -57,9 +57,9 @@ func UpsertSubmission(
 // ラウンド別ランキング
 func GetRoundRanking(ctx context.Context, roomID int64, round int) ([]RankingRow, error) {
 	q := `
-		SELECT h.user_id, u.name, h.score
+		SELECT h.uuid, u.name, h.score
 		FROM history h
-		JOIN users u ON u.id = h.user_id
+		JOIN users u ON u.uuid = h.uuid
 		WHERE h.room_id = $1 AND h.round_no = $2
 		ORDER BY h.score DESC, h.created_at ASC;
 	`
@@ -72,7 +72,7 @@ func GetRoundRanking(ctx context.Context, roomID int64, round int) ([]RankingRow
 	var out []RankingRow
 	for rows.Next() {
 		var r RankingRow
-		if err := rows.Scan(&r.UserID, &r.Name, &r.Score); err != nil {
+		if err := rows.Scan(&r.Uuid, &r.Name, &r.Score); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -83,11 +83,11 @@ func GetRoundRanking(ctx context.Context, roomID int64, round int) ([]RankingRow
 // 合計ランキング（部屋内）
 func GetTotalRanking(ctx context.Context, roomID int64) ([]RankingRow, error) {
 	q := `
-		SELECT h.user_id, u.name, SUM(h.score) AS total_score
+		SELECT h.uuid, u.name, SUM(h.score) AS total_score
 		FROM history h
-		JOIN users u ON u.id = h.user_id
+		JOIN users u ON u.uuid = h.uuid
 		WHERE h.room_id = $1
-		GROUP BY h.user_id, u.name
+		GROUP BY h.uuid, u.name
 		ORDER BY total_score DESC;
 	`
 	rows, err := db.DB.QueryContext(ctx, q, roomID)
@@ -99,7 +99,7 @@ func GetTotalRanking(ctx context.Context, roomID int64) ([]RankingRow, error) {
 	var out []RankingRow
 	for rows.Next() {
 		var r RankingRow
-		if err := rows.Scan(&r.UserID, &r.Name, &r.Score); err != nil {
+		if err := rows.Scan(&r.Uuid, &r.Name, &r.Score); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -108,16 +108,16 @@ func GetTotalRanking(ctx context.Context, roomID int64) ([]RankingRow, error) {
 }
 
 // ユーザーの履歴（最新順）
-func GetUserHistory(ctx context.Context, userID int64) ([]models.History, error) {
+func GetUserHistory(ctx context.Context, uuid string) ([]models.History, error) {
 	q := `
-		SELECT id, room_id, round_no, user_id,
+		SELECT id, room_id, round_no, uuid,
 			   target_h, target_s, target_v,
 			   score, result_json, photo_mime, photo_url, created_at
 		FROM history
-		WHERE user_id=$1
+		WHERE uuid=$1
 		ORDER BY created_at DESC;
 	`
-	rows, err := db.DB.QueryContext(ctx, q, userID)
+	rows, err := db.DB.QueryContext(ctx, q, uuid)
 	if err != nil {
 		return nil, err
 	}
