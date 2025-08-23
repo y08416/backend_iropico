@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"io"
 	"log"
 	"strconv"
 	"time"
@@ -28,15 +27,13 @@ func Submit(c *fiber.Ctx) error {
 	}
 
 	// 画像（任意）
-	var photoBytes []byte
 	var photoMime *string
 	var photoURL *string // 今は未使用
 	if fileHeader, err := c.FormFile("photo"); err == nil && fileHeader != nil {
 		f, err := fileHeader.Open()
 		if err == nil {
 			defer f.Close()
-			b, _ := io.ReadAll(f)
-			photoBytes = b
+			// photoBytesは不要
 			m := fileHeader.Header.Get("Content-Type")
 			photoMime = &m
 		}
@@ -57,7 +54,7 @@ func Submit(c *fiber.Ctx) error {
 		room.ID, roundNo, userID,
 		h, float32(sF), float32(vF),
 		float32(scoreF),
-		photoBytes, photoMime, photoURL,
+		photoMime, photoURL,
 		nil, // resultJSON (任意)
 	)
 	if err != nil {
