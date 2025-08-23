@@ -46,17 +46,17 @@ func CreateRoom(c *fiber.Ctx) error {
 
 // -------- ルーム参加 --------
 type joinReq struct {
-	UserID string `json:"user_id"`
+	Uuid string `json:"uid"`
 }
 
 func JoinRoom(c *fiber.Ctx) error {
 	code := c.Params("code")
 	var req joinReq
-	if err := c.BodyParser(&req); err != nil || req.UserID == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "user_id required"})
+	if err := c.BodyParser(&req); err != nil || req.Uuid == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "uuid required"})
 	}
 
-	userID, err := repositories.GetUserIDByUUID(c.Context(), req.UserID)
+	userID, err := repositories.GetUserIDByUUID(c.Context(), req.Uuid)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "user not found"})
 	}
@@ -111,6 +111,7 @@ func StartRoom(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"type":  "start",
 		"ok":    true,
 		"round": 1,
 		"color": fiber.Map{"h": h, "s": s, "v": v},
@@ -148,6 +149,7 @@ func NextRound(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"type":  "next",
 		"ok":    true,
 		"round": newRound,
 		"color": fiber.Map{"h": h, "s": s, "v": v},

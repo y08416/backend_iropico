@@ -86,8 +86,11 @@ func Submit(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"type":    "submit",
 		"ok":      true,
 		"round":   roundNo,
+		"userId":  userID,
+		"score":   float32(scoreF),
 		"ranking": rank,
 	})
 }
