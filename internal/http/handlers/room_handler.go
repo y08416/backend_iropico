@@ -13,13 +13,13 @@ import (
 
 // -------- ルーム作成 --------
 type createRoomReq struct {
-	HostUserID int64 `json:"host_user_id"`
+	Uuid string `json:"uuid"`
 }
 
 func CreateRoom(c *fiber.Ctx) error {
 	var req createRoomReq
-	if err := c.BodyParser(&req); err != nil || req.HostUserID == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "host_user_id required"})
+	if err := c.BodyParser(&req); err != nil || req.Uuid == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "uuid requiredd" + err.Error()})
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
@@ -28,7 +28,7 @@ func CreateRoom(c *fiber.Ctx) error {
 	// 一意コードを複数回トライ（最大10回）
 	for i := 0; i < 10; i++ {
 		code := genCode(6)
-		r, err := repositories.CreateRoom(ctx, req.HostUserID, code)
+		r, err := repositories.CreateRoom(ctx, req.Uuid, code)
 		if err == nil {
 			// ※必要ならここでホストも自動参加させる
 			// _ = repositories.JoinRoom(ctx, r.ID, req.HostUserID)

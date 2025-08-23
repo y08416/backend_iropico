@@ -10,43 +10,59 @@ import (
 	httpapi "backend_iropico/internal/http"
 	"backend_iropico/internal/ws"
 
-	"github.com/joho/godotenv"
 	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	_ = godotenv.Load() // .env があれば読み込む
+	// =========================
+	// .env の読み込み方針
+	// =========================
+	// Docker 実行時は docker-compose の environment を信頼し、
+	// .env は読み込まない。ローカル実行時のみ .env を読み込む。
+	if _, ok := os.LookupEnv("RUNNING_IN_DOCKER"); !ok {
+		// 存在するものだけを静かに読む（順に優先度：左→右）
+		_ = godotenv.Load("backend/.env", ".env", ".env.localdev")
+	}
 
-	// 必須ENVの検証（ローカル/本番どちらでも安全）
+	// =========================
+	// 必須ENVの検証
+	// =========================
 	if os.Getenv("DATABASE_URL") == "" {
 		log.Fatal("DATABASE_URL is not set in environment")
 	}
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
 	}
 
+	// =========================
 	// DB接続
+	// =========================
 	db.Connect()
 
-	// WSマネージャ
+	// =========================
+	// ルーター & WS
+	// =========================
 	manager := ws.NewManager()
-
-	// ルーター
 	app := httpapi.NewRouter(manager)
 
-	// ルート可視化: http://127.0.0.1:3000/_routes で確認できる（開発用）
+	// 開発用：現在登録済みルートを表示
 	app.Get("/_routes", func(c *fiber.Ctx) error {
 		return c.JSON(app.Stack())
 	})
-
-	// シンプルヘルスチェック（起動確認用）
+	// ヘルスチェック
 	app.Get("/healthz", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"ok": true})
 	})
+	// ルート
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("iropico-backend is running")
+	})
 
-	// サーバ起動をゴルーチンで行い、シグナルを待って優雅に停止
+	// =========================
+	// 起動 & 優雅な停止
+	// =========================
 	go func() {
 		log.Printf("🚀 Server running on :%s", port)
 		if err := app.Listen(":" + port); err != nil {
@@ -54,13 +70,12 @@ func main() {
 		}
 	}()
 
-	// Ctrl+C / SIGTERM を待つ
+	// Ctrl+C / SIGTERM を待ってシャットダウン
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	<-sig
 	log.Println("shutting down...")
 
-	// 優雅に停止
 	if err := app.Shutdown(); err != nil {
 		log.Printf("shutdown error: %v", err)
 	}

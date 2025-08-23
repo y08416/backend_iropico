@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,7 +17,15 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load(".env")
+	// .env を読むのはローカル実行時のみ（Dockerでは env_file を使用）
+	if _, ok := os.LookupEnv("RUNNING_IN_DOCKER"); !ok {
+		_ = godotenv.Load("backend/.env")
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
 
 	pool, err := db.NewPoolFromEnv()
 	if err != nil {
@@ -35,9 +44,10 @@ func main() {
 		}
 
 		var in struct {
-			DisplayName string `json:"display_name"`
+			Name string `json:"name"`
+			UUID string `json:"uuid"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.DisplayName == "" {
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.Name == "" || in.UUID == "" {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
@@ -47,11 +57,12 @@ func main() {
 
 		var u models.User
 		err := pool.QueryRow(ctx,
-			`INSERT INTO users (display_name)
-			 VALUES ($1)
-			 RETURNING id, uuid::text, display_name, created_at`,
-			in.DisplayName,
-		).Scan(&u.ID, &u.UUID, &u.DisplayName, &u.CreatedAt)
+			`INSERT INTO users (name, uuid)
+			 VALUES ($1, $2)
+			 ON CONFLICT (uuid) DO UPDATE SET name = EXCLUDED.name
+			 RETURNING id, uuid::text, name, created_at`,
+			in.Name, in.UUID,
+		).Scan(&u.ID, &u.UUID, &u.Name, &u.CreatedAt)
 
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -66,6 +77,6 @@ func main() {
 		json.NewEncoder(w).Encode(u)
 	})
 
-	log.Println("listening :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("listening :" + port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
