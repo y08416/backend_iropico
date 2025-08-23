@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+
 	// =========================
 	// .env の読み込み方針
 	// =========================
@@ -31,6 +32,7 @@ func main() {
 	if os.Getenv("DATABASE_URL") == "" {
 		log.Fatal("DATABASE_URL is not set in environment")
 	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
