@@ -6,7 +6,7 @@ import "time"
 type Room struct {
 	ID           int64      `db:"id"`
 	Code         string     `db:"code"` // 参加用コード（UNIQUE）
-	HostUserID   int64      `db:"host_user_id"`
+	HostUuid     string     `db:"host_uuid"`
 	Status       string     `db:"status"`        // "waiting" / "started" / "ended"
 	CurrentRound int        `db:"current_round"` // 0 開始、開始後に 1 になる
 	CreatedAt    time.Time  `db:"created_at"`

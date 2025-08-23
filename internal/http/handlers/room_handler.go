@@ -56,11 +56,6 @@ func JoinRoom(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "uuid required"})
 	}
 
-	userID, err := repositories.GetUserIDByUUID(c.Context(), req.Uuid)
-	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "user not found"})
-	}
-
 	ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
 	defer cancel()
 
@@ -69,7 +64,7 @@ func JoinRoom(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "room not found"})
 	}
 
-	if err := repositories.JoinRoom(ctx, room.ID, userID); err != nil {
+	if err := repositories.JoinRoom(ctx, room.ID, req.Uuid); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
 	}
 

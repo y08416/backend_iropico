@@ -10,26 +10,26 @@ import (
 	"backend_iropico/internal/models"
 )
 
-func 	CreateRoom(ctx context.Context, uid string, code string) (models.Room, error) {
-	var hostUserID int64
-  err := db.DB.QueryRowContext(ctx, "SELECT id FROM users WHERE uuid = $1", uid).Scan(&hostUserID)
-  if err != nil {
-    return models.Room{}, fmt.Errorf("failed to get user ID: %w", err)
-  }
+func CreateRoom(ctx context.Context, uid string, code string) (models.Room, error) {
+	var hostUuid string
+	err := db.DB.QueryRowContext(ctx, "SELECT uuid FROM users WHERE uuid = $1", uid).Scan(&hostUuid)
+	if err != nil {
+		return models.Room{}, fmt.Errorf("failed to get user UUID: %w", err)
+	}
 
-  q := `
-    INSERT INTO rooms (code, host_user_id)
+	q := `
+    INSERT INTO rooms (code, host_uuid)
     VALUES ($1, $2)
-    RETURNING id, code, host_user_id, status, current_round, created_at, started_at, ended_at;
+    RETURNING id, code, host_uuid, status, current_round, created_at, started_at, ended_at;
   `
-  var r models.Room
-  err = db.DB.QueryRowContext(ctx, q, code, hostUserID).
-    Scan(&r.ID, &r.Code, &r.HostUserID, &r.Status, &r.CurrentRound, &r.CreatedAt, &r.StartedAt, &r.EndedAt)
-  if err != nil {
-    return models.Room{}, fmt.Errorf("failed to create room: %w", err)
-  }
-  
-  return r, nil
+	var r models.Room
+	err = db.DB.QueryRowContext(ctx, q, code, hostUuid).
+		Scan(&r.ID, &r.Code, &r.HostUuid, &r.Status, &r.CurrentRound, &r.CreatedAt, &r.StartedAt, &r.EndedAt)
+	if err != nil {
+		return models.Room{}, fmt.Errorf("failed to create room: %w", err)
+	}
+
+	return r, nil
 }
 
 func GetRoomByCode(ctx context.Context, code string) (models.Room, error) {
@@ -39,7 +39,7 @@ func GetRoomByCode(ctx context.Context, code string) (models.Room, error) {
 	`
 	var r models.Room
 	err := db.DB.QueryRowContext(ctx, q, code).
-		Scan(&r.ID, &r.Code, &r.HostUserID, &r.Status, &r.CurrentRound, &r.CreatedAt, &r.StartedAt, &r.EndedAt)
+		Scan(&r.ID, &r.Code, &r.HostUuid, &r.Status, &r.CurrentRound, &r.CreatedAt, &r.StartedAt, &r.EndedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return r, nil

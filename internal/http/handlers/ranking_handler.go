@@ -42,16 +42,15 @@ func GetRanking(c *fiber.Ctx) error {
 }
 
 func GetUserHistory(c *fiber.Ctx) error {
-	idStr := c.Params("id")
-	userID, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || userID <= 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "invalid user id"})
+	uid := c.Params("uid")
+	if uid == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "invalid uid"})
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
 	defer cancel()
 
-	rows, err := repositories.GetUserHistory(ctx, userID)
+	rows, err := repositories.GetUserHistory(ctx, uid)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
 	}

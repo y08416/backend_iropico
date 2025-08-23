@@ -127,7 +127,7 @@ func GetUserHistory(ctx context.Context, uuid string) ([]models.History, error) 
 	for rows.Next() {
 		var h models.History
 		if err := rows.Scan(
-			&h.ID, &h.RoomID, &h.RoundNo, &h.UserID,
+			&h.ID, &h.RoomID, &h.RoundNo, &h.Uuid,
 			&h.TargetH, &h.TargetS, &h.TargetV,
 			&h.Score, &h.ResultJSON, &h.PhotoMime, &h.PhotoURL, &h.CreatedAt,
 		); err != nil {
