@@ -7,9 +7,9 @@ import (
 )
 
 func InitRouter(e *echo.Echo) {
-	e.GET("/users/:id", handlers.GetUser)
+	e.GET("/users/uuid", handlers.GetUser)
 	e.GET("/users", handlers.ListUsers)
-	e.PATCH("/users/:id", handlers.UpdateUser)
-	e.DELETE("/users/:id", handlers.DeleteUser)
+	e.PATCH("/users/uuid", handlers.UpdateUser)
+	e.DELETE("/users/uuid", handlers.DeleteUser)
 	// 他のエンドポイントも同様に追加
 }

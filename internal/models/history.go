@@ -5,10 +5,10 @@ import (
 )
 
 type History struct {
-	ID      int64 `db:"id"`
-	RoomID  int64 `db:"room_id"`
-	RoundNo int   `db:"round_no"`
-	UserID  int64 `db:"user_id"`
+	ID      int64  `db:"id"`
+	RoomID  int64  `db:"room_id"`
+	RoundNo int    `db:"round_no"`
+	Uuid    string `db:"uuid"`
 
 	TargetH int     `db:"target_h"` // 0..360
 	TargetS float32 `db:"target_s"` // 0..1

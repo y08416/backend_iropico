@@ -15,15 +15,15 @@ func Submit(c *fiber.Ctx) error {
 	code := c.Params("code")
 
 	// multipart: user_id, round_no, score, h, s, v, photo(file)
-	userID, _ := strconv.ParseInt(c.FormValue("user_id"), 10, 64)
+	uuid := c.FormValue("uuid")
 	roundNo, _ := strconv.Atoi(c.FormValue("round_no"))
 	scoreF, _ := strconv.ParseFloat(c.FormValue("score"), 32)
 	h, _ := strconv.Atoi(c.FormValue("h"))
 	sF, _ := strconv.ParseFloat(c.FormValue("s"), 32)
 	vF, _ := strconv.ParseFloat(c.FormValue("v"), 32)
 
-	if userID == 0 || roundNo == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "user_id and round_no required"})
+	if uuid == "" || roundNo == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "uuid and round_no required"})
 	}
 
 	// 画像（任意）
@@ -51,7 +51,7 @@ func Submit(c *fiber.Ctx) error {
 	// 保存（upsert）
 	err = repositories.UpsertSubmission(
 		ctx,
-		room.ID, roundNo, userID,
+		room.ID, roundNo, uuid,
 		h, float32(sF), float32(vF),
 		float32(scoreF),
 		photoMime, photoURL,
@@ -62,7 +62,7 @@ func Submit(c *fiber.Ctx) error {
 	}
 
 	// そのユーザーを「クリア」扱いに
-	if err := repositories.MarkCleared(ctx, room.ID, userID); err != nil {
+	if err := repositories.MarkCleared(ctx, room.ID, uuid); err != nil {
 		log.Printf("[WARN] MarkCleared failed: %v", err)
 	}
 
@@ -76,7 +76,7 @@ func Submit(c *fiber.Ctx) error {
 	if wsMgr != nil {
 		wsMgr.GetHub(code).Emit("submission", fiber.Map{
 			"round":   roundNo,
-			"userId":  userID,
+			"uuid":    uuid,
 			"score":   float32(scoreF),
 			"ranking": rank,
 		})
@@ -86,7 +86,7 @@ func Submit(c *fiber.Ctx) error {
 		"type":    "submit",
 		"ok":      true,
 		"round":   roundNo,
-		"userId":  userID,
+		"uuid":    uuid,
 		"score":   float32(scoreF),
 		"ranking": rank,
 	})

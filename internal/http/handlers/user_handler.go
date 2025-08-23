@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -40,15 +39,11 @@ func RegisterUser(c *fiber.Ctx) error {
 	})
 }
 
-// GET /users/:id
+// GET /users/:uuid
 func GetUser(c echo.Context) error {
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id"})
-	}
+	uuid := c.Param("uuid")
 	ctx := c.Request().Context()
-	user, err := repositories.GetUserByID(ctx, id)
+	user, err := repositories.GetUserByUUID(ctx, uuid)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, nil)
 	}

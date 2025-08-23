@@ -6,9 +6,9 @@ END $$;
 
 -- users
 CREATE TABLE IF NOT EXISTS users (
-  id         BIGSERIAL PRIMARY KEY,
-  name       TEXT NOT NULL,
+  id         SERIAL PRIMARY KEY,
   uuid       TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS rooms (
   id             BIGSERIAL PRIMARY KEY,
   code           TEXT NOT NULL UNIQUE,
-  host_user_id   BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  host_uuid      TEXT NOT NULL REFERENCES users(uuid) ON DELETE RESTRICT,
   status         room_status NOT NULL DEFAULT 'waiting',
   current_round  INTEGER NOT NULL DEFAULT 0,
   created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -29,10 +29,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_rooms_code ON rooms(code);
 CREATE TABLE IF NOT EXISTS players (
   id           BIGSERIAL PRIMARY KEY,
   room_id      BIGINT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-  user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  uuid         TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
   has_cleared  BOOLEAN NOT NULL DEFAULT FALSE,
   joined_at    TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (room_id, user_id)
+  UNIQUE (room_id, uuid)
 );
 CREATE INDEX IF NOT EXISTS idx_players_room ON players(room_id);
 
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS history (
   id           BIGSERIAL PRIMARY KEY,
   room_id      BIGINT  NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   round_no     INTEGER NOT NULL,
-  user_id      BIGINT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  uuid        TEXT  NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
 
   -- 出題色（HSV）
   target_h     INTEGER NOT NULL CHECK (target_h >= 0 AND target_h <= 360),
@@ -57,8 +57,8 @@ CREATE TABLE IF NOT EXISTS history (
   photo_url    TEXT,
 
   created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (room_id, round_no, user_id)
+  UNIQUE (room_id, round_no, uuid)
 );
 CREATE INDEX IF NOT EXISTS idx_history_room_round       ON history(room_id, round_no);
-CREATE INDEX IF NOT EXISTS idx_history_user             ON history(user_id);
-CREATE INDEX IF NOT EXISTS idx_history_room_round_user  ON history(room_id, round_no, user_id);
+CREATE INDEX IF NOT EXISTS idx_history_user             ON history(uuid);
+CREATE INDEX IF NOT EXISTS idx_history_room_round_user  ON history(room_id, round_no, uuid);
