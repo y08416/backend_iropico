@@ -34,7 +34,7 @@ func CreateRoom(ctx context.Context, uid string, code string) (models.Room, erro
 
 func GetRoomByCode(ctx context.Context, code string) (models.Room, error) {
 	q := `
-		SELECT id, code, host_user_id, status, current_round, created_at, started_at, ended_at
+		SELECT id, code, host_uuid, status, current_round, created_at, started_at, ended_at
 		FROM rooms WHERE code=$1;
 	`
 	var r models.Room

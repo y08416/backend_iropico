@@ -6,7 +6,8 @@ END $$;
 
 -- users
 CREATE TABLE IF NOT EXISTS users (
-  uuid       TEXT NOT NULL UNIQUE PRIMARY KEY,
+  id         SERIAL PRIMARY KEY,
+  uuid       TEXT NOT NULL UNIQUE,
   name       TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

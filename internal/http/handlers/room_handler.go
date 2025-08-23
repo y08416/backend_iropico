@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	"strings"
@@ -60,6 +61,7 @@ func JoinRoom(c *fiber.Ctx) error {
 	defer cancel()
 
 	room, err := repositories.GetRoomByCode(ctx, code)
+	fmt.Printf("room: %+v\n", room)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "room not found"})
 	}
