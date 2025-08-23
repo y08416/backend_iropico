@@ -17,9 +17,8 @@ type History struct {
 	Score      float32 `db:"score"`       // 0..1
 	ResultJSON []byte  `db:"result_json"` // JSONB は []byte で受ける or stringでも可
 
-	PhotoBytes []byte  `db:"photo_bytes"` // MVPはDB保存
-	PhotoMime  *string `db:"photo_mime"`
-	PhotoURL   *string `db:"photo_url"`
+	PhotoMime *string `db:"photo_mime"`
+	PhotoURL  *string `db:"photo_url"`
 
 	CreatedAt time.Time `db:"created_at"`
 }

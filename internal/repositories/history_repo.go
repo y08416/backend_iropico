@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"database/sql"
 
 	"backend_iropico/internal/db"
 	"backend_iropico/internal/models"
@@ -20,31 +19,35 @@ func UpsertSubmission(
 	roomID int64, round int, userID int64,
 	h int, s, v float32,
 	score float32,
-	photoBytes []byte, photoMime, photoURL *string,
+	photoMime, photoURL *string,
 	resultJSON []byte,
 ) error {
 	q := `
-		INSERT INTO history
-		  (room_id, round_no, user_id, target_h, target_s, target_v, score, result_json, photo_bytes, photo_mime, photo_url)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-		ON CONFLICT (room_id, round_no, user_id)
-		DO UPDATE SET
-		  target_h=EXCLUDED.target_h,
-		  target_s=EXCLUDED.target_s,
-		  target_v=EXCLUDED.target_v,
-		  score=EXCLUDED.score,
-		  result_json=EXCLUDED.result_json,
-		  photo_bytes=EXCLUDED.photo_bytes,
-		  photo_mime=EXCLUDED.photo_mime,
-		  photo_url=EXCLUDED.photo_url,
-		  created_at=NOW();
-	`
+				INSERT INTO history
+					(room_id, round_no, user_id, target_h, target_s, target_v, score, result_json, photo_mime, photo_url)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+				ON CONFLICT (room_id, round_no, user_id)
+				DO UPDATE SET
+					target_h=EXCLUDED.target_h,
+					target_s=EXCLUDED.target_s,
+					target_v=EXCLUDED.target_v,
+					score=EXCLUDED.score,
+					result_json=EXCLUDED.result_json,
+					photo_mime=EXCLUDED.photo_mime,
+					photo_url=EXCLUDED.photo_url,
+					created_at=NOW();
+		`
+	var resultJSONArg interface{}
+	if len(resultJSON) == 0 {
+		resultJSONArg = nil
+	} else {
+		resultJSONArg = resultJSON
+	}
 	_, err := db.DB.ExecContext(ctx, q,
 		roomID, round, userID,
 		h, s, v,
 		score,
-		nullBytes(resultJSON),
-		nullBytes(photoBytes),
+		resultJSONArg,
 		photoMime,
 		photoURL,
 	)
@@ -108,8 +111,8 @@ func GetTotalRanking(ctx context.Context, roomID int64) ([]RankingRow, error) {
 func GetUserHistory(ctx context.Context, userID int64) ([]models.History, error) {
 	q := `
 		SELECT id, room_id, round_no, user_id,
-		       target_h, target_s, target_v,
-		       score, result_json, photo_bytes, photo_mime, photo_url, created_at
+			   target_h, target_s, target_v,
+			   score, result_json, photo_mime, photo_url, created_at
 		FROM history
 		WHERE user_id=$1
 		ORDER BY created_at DESC;
@@ -126,19 +129,11 @@ func GetUserHistory(ctx context.Context, userID int64) ([]models.History, error)
 		if err := rows.Scan(
 			&h.ID, &h.RoomID, &h.RoundNo, &h.UserID,
 			&h.TargetH, &h.TargetS, &h.TargetV,
-			&h.Score, &h.ResultJSON, &h.PhotoBytes, &h.PhotoMime, &h.PhotoURL, &h.CreatedAt,
+			&h.Score, &h.ResultJSON, &h.PhotoMime, &h.PhotoURL, &h.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
 		out = append(out, h)
 	}
 	return out, rows.Err()
-}
-
-// []byte を NULL 許容にしたい時の小ヘルパ
-func nullBytes(b []byte) interface{} {
-	if len(b) == 0 { // nil でも len=0 になる
-		return sql.NullString{}
-	}
-	return b
 }
