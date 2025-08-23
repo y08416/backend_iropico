@@ -46,14 +46,19 @@ func CreateRoom(c *fiber.Ctx) error {
 
 // -------- ルーム参加 --------
 type joinReq struct {
-	UserID int64 `json:"user_id"`
+	UserID string `json:"user_id"`
 }
 
 func JoinRoom(c *fiber.Ctx) error {
 	code := c.Params("code")
 	var req joinReq
-	if err := c.BodyParser(&req); err != nil || req.UserID == 0 {
+	if err := c.BodyParser(&req); err != nil || req.UserID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"ok": false, "msg": "user_id required"})
+	}
+
+	userID, err := repositories.GetUserIDByUUID(c.Context(), req.UserID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "user not found"})
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
@@ -64,8 +69,7 @@ func JoinRoom(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"ok": false, "msg": "room not found"})
 	}
 
-	if err := repositories.JoinRoom(ctx, room.ID, req.UserID); err != nil {
-		// UNIQUE制約で既参加なら実害ないので 204 でも良いが、ここではエラー返却
+	if err := repositories.JoinRoom(ctx, room.ID, userID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"ok": false, "msg": err.Error()})
 	}
 

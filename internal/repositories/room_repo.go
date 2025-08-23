@@ -2,31 +2,65 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 
 	"backend_iropico/internal/db"
 	"backend_iropico/internal/models"
 )
 
 func 	CreateRoom(ctx context.Context, uid string, code string) (models.Room, error) {
-	q := `
-		INSERT INTO rooms (code, host_user_id)
-		VALUES ($1, $2)
-		RETURNING id, code, host_user_id, status, current_round, created_at, started_at, ended_at;
-	`
-	var r models.Room
-	err := db.DB.QueryRowContext(ctx, q, code, uid).
-		Scan(&r.ID, &r.Code, &r.HostUserID, &r.Status, &r.CurrentRound, &r.CreatedAt, &r.StartedAt, &r.EndedAt)
-	return r, err
+	var hostUserID int64
+  err := db.DB.QueryRowContext(ctx, "SELECT id FROM users WHERE uuid = $1", uid).Scan(&hostUserID)
+  if err != nil {
+    return models.Room{}, fmt.Errorf("failed to get user ID: %w", err)
+  }
+
+  q := `
+    INSERT INTO rooms (code, host_user_id)
+    VALUES ($1, $2)
+    RETURNING id, code, host_user_id, status, current_round, created_at, started_at, ended_at;
+  `
+  var r models.Room
+  err = db.DB.QueryRowContext(ctx, q, code, hostUserID).
+    Scan(&r.ID, &r.Code, &r.HostUserID, &r.Status, &r.CurrentRound, &r.CreatedAt, &r.StartedAt, &r.EndedAt)
+  if err != nil {
+    return models.Room{}, fmt.Errorf("failed to create room: %w", err)
+  }
+  
+  return r, nil
 }
 
 func GetRoomByCode(ctx context.Context, code string) (models.Room, error) {
-	q := `SELECT id, code, host_user_id, status, current_round, created_at, started_at, ended_at
-	      FROM rooms WHERE code=$1;`
+	q := `
+		SELECT id, code, host_user_id, status, current_round, created_at, started_at, ended_at
+		FROM rooms WHERE code=$1;
+	`
 	var r models.Room
 	err := db.DB.QueryRowContext(ctx, q, code).
 		Scan(&r.ID, &r.Code, &r.HostUserID, &r.Status, &r.CurrentRound, &r.CreatedAt, &r.StartedAt, &r.EndedAt)
-	return r, err
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return r, nil
+		}
+		return r, err
+	}
+	return r, nil
+}
+
+func GetUserIDByUUID(ctx context.Context, uuid string) (int64, error) {
+	var userID int64
+	q := `
+		SELECT id
+		FROM users
+		WHERE uuid = $1;
+	`
+	err := db.DB.QueryRowContext(ctx, q, uuid).Scan(&userID)
+	if err != nil {
+		return 0, err
+	}
+	return userID, nil
 }
 
 func UpdateRoomStatusAndRound(ctx context.Context, roomID int64, status string, round int) error {
